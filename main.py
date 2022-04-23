@@ -9,14 +9,9 @@ import datetime
 
 debug = False
 
-fps = 1.5 #Accepts a float
+
 cameraPort = 0
 cameraMode = ""
-maxSentryStorage = 10 #* pow(10,3) #[in MB] (onces this is reached oldest images will be deleted)
-warnSentryStorage = .7 * maxSentryStorage #[in MB] (once this limit is reached a daily email is sent)
-fileUploadNotificationFreq = 10 #[int] Every 1/x file that is uploaded will be announce on terminal. 0 diables announcements
-if fileUploadNotificationFreq < 1:
-    fileUploadNotificationFreq = pow(10,10)
 
 with open(r'./environment.json', encoding="utf-8") as json_file:
     environment = json.load(json_file)
@@ -25,6 +20,25 @@ from_email = environment["from_email"]
 from_email_pass = environment["from_email_pass"]
 sendEmails = environment["sendEmails"]
 startup = environment["mode"]
+tempMaxSentryStorage = float(environment["maxSentryStorage"])
+storageUnits = environment["storageUnits"].upper()
+fps = float(environment["fps"])
+fileUploadNotificationFreq = int(environment["notification_freq"])
+
+if fileUploadNotificationFreq < 1: #[int] Every 1/x file that is uploaded will be announce on terminal. 0 diables announcements
+    fileUploadNotificationFreq = pow(10,10)
+
+unitConv = 1
+if storageUnits == "GB":
+    unitConv = pow(10,3)
+elif storageUnits == "MB":
+    unitConv = 1
+else:
+    print("Error with storageUnits in environment.json, defaulting to MB")
+
+maxSentryStorage = tempMaxSentryStorage * unitConv #(onces this is reached oldest images will be deleted)
+warnSentryStorage = .7 * maxSentryStorage #[in MB] (once this limit is reached a daily email is sent)
+
 
 if sendEmails:
     print("Sending initialization email...")
