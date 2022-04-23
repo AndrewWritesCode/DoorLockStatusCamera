@@ -92,7 +92,7 @@ for file in os.listdir(os.getcwd()):
 print("Session size intializing at " + str(session_size / pow(10,6)) + "MB")
 time_lastCapture = time.time()
 #initializes the time for fps calcs
-fps = 1
+fps = 1.5 #Accepts a float
 fps_step = FPS_step(fps)
 cameraPort = 0
 try:
@@ -117,7 +117,7 @@ while (cap.isOpened()):
 
     #Handles file-naming/saving and fps
     time_now = time.time()
-    currentDate = datetime.datetime.now()
+    currentDate = datetime.datetime.now() #The current date for the frame
     if (time_now - time_lastCapture) > fps_step:
         fileNum = len(os.listdir(os.getcwd()))
         dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
@@ -128,6 +128,7 @@ while (cap.isOpened()):
         session_size = session_size + os.path.getsize(filename)
         print('Saving ' + str(filename) + ', Total Session Size = ' + str(session_size/pow(10,6)) + 'MB')
         time_lastCapture = time_now
+    #Checks to see if the day the frame was taken matches the day the session began
     if currentDate.day - startDay != 0:
         print("Day complete, saved " + str(session_size) + "MB for day, moving to new directory...")
         os.chdir('..')
@@ -138,7 +139,7 @@ while (cap.isOpened()):
             print("Successfully created new directory...")
             os.chdir(dateString)
             print("Now saving images to " + str(os.getcwd()))
-            startDay = currentDate.day
+            startDay = currentDate.day #updates the day the sessions began
         except:
             logging.WARN("Unable to create directory for next day")
 
