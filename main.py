@@ -1,6 +1,9 @@
-import logging
+
 import cv2
 import os
+import json
+import smtplib
+from email.message import EmailMessage
 import time
 import datetime
 
@@ -9,10 +12,36 @@ debug = False
 fps = 1.5 #Accepts a float
 cameraPort = 0
 cameraMode = ""
-maxSentryStorage = 1000 * pow(10,3) #[in MB] (onces this is reached oldest images will be deleted)
-fileUploadNotificationFreq = 0 #[int] Every 1/x file that is uploaded will be announce on terminal. 0 diables announcements
+maxSentryStorage = 10 #* pow(10,3) #[in MB] (onces this is reached oldest images will be deleted)
+warnSentryStorage = .7 * maxSentryStorage #[in MB] (once this limit is reached a daily email is sent)
+fileUploadNotificationFreq = 10 #[int] Every 1/x file that is uploaded will be announce on terminal. 0 diables announcements
 if fileUploadNotificationFreq < 1:
     fileUploadNotificationFreq = pow(10,10)
+
+with open(r'./environment.json', encoding="utf-8") as json_file:
+    environment = json.load(json_file)
+to_email = environment["to_email"]
+from_email = environment["from_email"]
+from_email_pass = environment["from_email_pass"]
+sendEmails = environment["sendEmails"]
+startup = environment["mode"]
+
+if sendEmails:
+    print("Sending initialization email...")
+    msg = EmailMessage()
+    msg['Subject'] = 'Door Sentry Activated'
+    msg['From'] = from_email
+    msg['To'] = to_email
+    msg.set_content('Door Sentry is initializing')
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(from_email, from_email_pass)
+
+            smtp.send_message(msg)
+    except:
+        print("email credentials not accepted")
+
+
 #Calculates the disk space taken from a given FPS value and file size
 def DailySpaceConsumption(singleFileSizeEstimate, fps):
     dailySpaceCons = singleFileSizeEstimate*86400*fps
@@ -22,9 +51,6 @@ def DailySpaceConsumption(singleFileSizeEstimate, fps):
 def FPSfromDailySpaceAllowance(singleFileSizeEstimate, DailySpaceAllow):
     fpsEstimate = DailySpaceAllow/(singleFileSizeEstimate*86400)
     return fpsEstimate
-
-def CollectionDebug(collection_type):
-    logging.debug("Collection Type set to " + collection_type)
 
 #get the start time in ms (webcams do not support cv2 FPS API)
 def FPS_step(fps):
@@ -38,45 +64,61 @@ def DirectorySetup(cameraMode):
     collection_type = ""
     collection_dir = ''
     sentryStorage = 0.0
-    while cameraMode != "T" or "S":
-        mode = input("TRAINING OR SENTRY [T/S]: ")
-        mode = mode.upper()
-        if mode == "S":
-            collection_type = "S"
-            collection_dir = 'doorSentry'
-            break
-        elif mode == "T" :
-            while collection_type != "L" or "U":
-                collection_type = input("TRAINING TYPE: LOCKED OR UNLOCKED? [L/U]: ")
-                collection_type = collection_type.upper()
-                if collection_type == "L":
-                    collection_dir = 'locked_uncleaned'
-                    print("Initializing Locked State Image Collection...")
-                    break
-                    if debug:
-                        CollectionDebug(collection_type)
-                    break
-                elif collection_type == "U":
-                    collection_dir = 'unlocked_uncleaned'
-                    print("Initializing Unlocked Image Data Collection...")
-                    if debug:
-                        CollectionDebug(collection_type)
-                    break
-        if collection_type == "L" or "U" or "S":
-            break
+    if startup == "sentry":
+        collection_type = "S"
+        collection_dir = 'doorSentry'
+    elif startup == "training":
+        while collection_type != "L" or "U":
+            collection_type = input("TRAINING TYPE: LOCKED OR UNLOCKED? [L/U]: ")
+            collection_type = collection_type.upper()
+            if collection_type == "L":
+                collection_dir = 'locked_uncleaned'
+                print("Initializing Locked State Image Collection...")
+                break
+            elif collection_type == "U":
+                collection_dir = 'unlocked_uncleaned'
+                print("Initializing Unlocked Image Data Collection...")
+                break
+    else:
+        while cameraMode != "T" or "S":
+            mode = input("TRAINING OR SENTRY [T/S]: ")
+            mode = mode.upper()
+            if mode == "S":
+                collection_type = "S"
+                collection_dir = 'doorSentry'
+                break
+            elif mode == "T" :
+                while collection_type != "L" or "U":
+                    collection_type = input("TRAINING TYPE: LOCKED OR UNLOCKED? [L/U]: ")
+                    collection_type = collection_type.upper()
+                    if collection_type == "L":
+                        collection_dir = 'locked_uncleaned'
+                        print("Initializing Locked State Image Collection...")
+                        break
+                    elif collection_type == "U":
+                        collection_dir = 'unlocked_uncleaned'
+                        print("Initializing Unlocked Image Data Collection...")
+                        break
+            if collection_type == "L" or "U" or "S":
+                break
 
 
 
     try:
         os.mkdir('data')
     except:
-        logging.debug('Using existing data directory')
+        print("Using existing data directory...")
     os.chdir('data')
+
+    try:
+        os.mkdir('archived_images')
+    except:
+        print("Using exisiting archived_images directory...")
 
     try:
         os.mkdir(collection_dir)
     except:
-        logging.debug('Using existing ' + collection_dir + ' directory')
+        print("Using existing " + collection_dir + " directory...")
     os.chdir(collection_dir)
 
     try:
@@ -91,7 +133,7 @@ def DirectorySetup(cameraMode):
 
     except:
         folderNum = len(os.listdir(os.getcwd())) + 1
-        logging.debug('Using existing dateString directory')
+        print("Using existing dateString directory...")
     os.chdir(dateString)
 
     return collection_type, folderNum, sentryStorage
@@ -118,11 +160,12 @@ fps_step = FPS_step(fps)
 try:
     cap = cv2.VideoCapture(cameraPort, cv2.CAP_DSHOW) #takes the first avaialble camera on computer
 except:
-    logging.ERROR('Unable to establish video link')
+    print("ERROR: Unable to establish video link")
 
 #checks if the camerafeed is opened
 print("Accessing Camera...")
 startDay = datetime.datetime.now().day #The day that recording starts
+sentDailyWarningEmail = False
 while (cap.isOpened()):
     #captures a frame each loop
     ret, frame = cap.read()
@@ -138,6 +181,27 @@ while (cap.isOpened()):
     #Handles file-naming/saving and fps
     time_now = time.time()
     currentDate = datetime.datetime.now() #The current date for the frame
+    if warnSentryStorage < (sentryStorage / pow(10, 6)):
+        if not sentDailyWarningEmail:
+            sentDailyWarningEmail = True
+            print("RUNNING OUT OF STORAGE SENDING WARNING EMAIL")
+            print(str(sentryStorage / pow(10,9)) + 'GB/' + str(maxSentryStorage / pow(10,3)) + 'GB used')
+            if sendEmails:
+                msg = EmailMessage()
+                msg['Subject'] = 'Door Sentry Running Out of Disk Space'
+                msg['From'] = from_email
+                msg['To'] = to_email
+                msg.set_content('Daily Email: DoorSentry is currently using ' + str(sentryStorage / pow(10,9)) + \
+                                'GB of ' + str(maxSentryStorage / pow(10,3)) + 'GB available storage')
+
+                try:
+                    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+                        smtp.login(from_email, from_email_pass)
+
+                        smtp.send_message(msg)
+                except:
+                    pass
+
     if (time_now - time_lastCapture) > fps_step:
         fileNum = len(os.listdir(os.getcwd()))
         dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
@@ -155,6 +219,7 @@ while (cap.isOpened()):
     if currentDate.day - startDay != 0:
         print("Day complete, saved " + str(daily_session_size) + "MB for day, moving to new directory...")
         os.chdir('..')
+
         try:
             dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
             os.mkdir(dateString)
@@ -164,9 +229,30 @@ while (cap.isOpened()):
             print("Now saving images to " + str(os.getcwd()))
             startDay = currentDate.day #updates the day the sessions began
             daily_session_size = 0.0
+            sentDailyWarningEmail = False
         except:
-            logging.WARN("Unable to create directory for next day")
+            print("ERROR: Unable to create directory for next day")
 
+
+
+    if maxSentryStorage < (sentryStorage / pow(10,6)):
+        print("Sentry Storage has reached limit: now terminating program...")
+        os.chdir('..')
+        print("Clear disk space in " + os.getcwd())
+        if sendEmails:
+            msg = EmailMessage()
+            msg['Subject'] = 'Door Sentry Out of Disk Space'
+            msg['From'] = from_email
+            msg['To'] = to_email
+            msg.set_content('Sentry Storage has reached limit: now terminating program. Clear disk space in ' + os.getcwd())
+            try:
+                with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+                    smtp.login(from_email, from_email_pass)
+
+                    smtp.send_message(msg)
+            except:
+                pass
+        break
 #cv2 cleanup
 cap.release()
 cv2.destroyAllWindows()
