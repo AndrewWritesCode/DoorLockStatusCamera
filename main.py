@@ -26,6 +26,8 @@ def FPS_step(fps):
 
 #Sets/Creates the directory
 def DirectorySetup():
+    currentDate = datetime.datetime.now()
+    dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
     cameraMode = ""
     collection_type = ""
     collection_dir = ''
@@ -68,10 +70,11 @@ def DirectorySetup():
 
     try:
         folderNum = len(os.listdir(os.getcwd())) + 1
-        os.mkdir('Session_' + str(folderNum))
+        os.mkdir(dateString)
     except:
-        logging.WARN('Unable to create session directory')
-    os.chdir('Session_' + str(folderNum))
+        folderNum = len(os.listdir(os.getcwd())) + 1
+        logging.debug('Using existing dateString directory')
+    os.chdir(dateString)
 
     return collection_type, folderNum
 
@@ -83,6 +86,10 @@ collection_type, folderNum = DirectorySetup()
 print("Saving images to " + str(os.getcwd()))
 #The number of bytes that have been saved in the current session
 session_size = 0
+for file in os.listdir(os.getcwd()):
+    session_size = session_size + os.path.getsize(file)
+    #This sums the file sizes in the current day's directory
+print("Session size intializing at " + str(session_size / pow(10,6)) + "MB")
 time_lastCapture = time.time()
 #initializes the time for fps calcs
 fps = 1
@@ -95,6 +102,7 @@ except:
 
 #checks if the camerafeed is opened
 print("Accessing Camera...")
+startDay = datetime.datetime.now().day #The day that recording starts
 while (cap.isOpened()):
     #captures a frame each loop
     ret, frame = cap.read()
@@ -112,13 +120,27 @@ while (cap.isOpened()):
     currentDate = datetime.datetime.now()
     if (time_now - time_lastCapture) > fps_step:
         fileNum = len(os.listdir(os.getcwd()))
-        dateString = str(currentDate.month) + '-' + str(currentDate.day) + '-' + str(currentDate.year)
+        dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
         timeString = str(currentDate.hour) + "h" + str(currentDate.minute) + "m" + str(currentDate.second) + "s"
-        filename = collection_type + '_ses' + str(folderNum) + '_num_' + str(fileNum) + '-' + str(fps) + 'FPS_' + dateString + '-' + timeString +  '.jpeg'
+        filename = collection_type + '_ses' + str(folderNum) + '_num_' + str(fileNum) + '-' + str(fps) + 'FPS_' + \
+                   dateString + '-' + timeString +  '.jpeg'
         cv2.imwrite(filename, frame)
         session_size = session_size + os.path.getsize(filename)
         print('Saving ' + str(filename) + ', Total Session Size = ' + str(session_size/pow(10,6)) + 'MB')
         time_lastCapture = time_now
+    if currentDate.day - startDay != 0:
+        print("Day complete, saved " + str(session_size) + "MB for day, moving to new directory...")
+        os.chdir('..')
+        try:
+            dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
+            os.mkdir(dateString)
+            folderNum = folderNum + 1
+            print("Successfully created new directory...")
+            os.chdir(dateString)
+            print("Now saving images to " + str(os.getcwd()))
+            startDay = currentDate.day
+        except:
+            logging.WARN("Unable to create directory for next day")
 
 #cv2 cleanup
 cap.release()
