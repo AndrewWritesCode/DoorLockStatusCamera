@@ -5,7 +5,7 @@
 	"mode": "sentry",
 	"sendEmails": "false",
 	"maxSentryStorage": "10",
-	"storageUnits": "MB",
+	"storageUnits": "GB",
 	"fps": "1.5",
 	"notification_freq": "10"
 }

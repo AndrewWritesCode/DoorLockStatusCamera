@@ -30,7 +30,7 @@ if fileUploadNotificationFreq < 1: #[int] Every 1/x file that is uploaded will b
 
 unitConv = 1
 if storageUnits == "GB":
-    unitConv = pow(10,3)
+    unitConv = 1024
 elif storageUnits == "MB":
     unitConv = 1
 else:
@@ -158,7 +158,7 @@ def DirectorySetup(cameraMode):
 
 collection_type, folderNum, sentryStorage = DirectorySetup(cameraMode)
 if collection_type == "S":
-    print(str(sentryStorage / pow(10,6)) + "MB of images are already saved to Sentry Storage...")
+    print(str(sentryStorage / pow(1024,2)) + "MB of images are already saved to Sentry Storage...")
 print("Saving images to " + str(os.getcwd()))
 #The number of bytes that have been saved in the current session
 daily_session_size = 0
@@ -166,7 +166,7 @@ daily_session_size = 0
 for file in os.listdir(os.getcwd()):
     daily_session_size = daily_session_size + os.path.getsize(file)
     #This sums the file sizes in the current day's directory
-print("Session size intializing at " + str(daily_session_size / pow(10, 6)) + "MB")
+print("Session size intializing at " + str(daily_session_size / pow(1024, 2)) + "MB")
 time_lastCapture = time.time()
 #initializes the time for fps calcs
 fps_step = FPS_step(fps)
@@ -188,6 +188,8 @@ while (cap.isOpened()):
         cv2.imshow('VideoStream', frame)
         #Press 'q' on keyboard to break loop and end program
         if cv2.waitKey(25) & 0xFF == ord('q'):
+            print("ENDING SESSION:")
+            print(str(sentryStorage / pow(1024,3)) + "GB of " + str(maxSentryStorage / 1024) + "GB allotted storage used")
             break
     else:
         break
@@ -195,18 +197,18 @@ while (cap.isOpened()):
     #Handles file-naming/saving and fps
     time_now = time.time()
     currentDate = datetime.datetime.now() #The current date for the frame
-    if warnSentryStorage < (sentryStorage / pow(10, 6)):
+    if warnSentryStorage < (sentryStorage / pow(1024, 2)):
         if not sentDailyWarningEmail:
             sentDailyWarningEmail = True
             print("RUNNING OUT OF STORAGE SENDING WARNING EMAIL")
-            print(str(sentryStorage / pow(10,9)) + 'GB/' + str(maxSentryStorage / pow(10,3)) + 'GB used')
+            print(str(sentryStorage / pow(1024,3)) + 'GB/' + str(maxSentryStorage / 1024) + 'GB used')
             if sendEmails:
                 msg = EmailMessage()
                 msg['Subject'] = 'Door Sentry Running Out of Disk Space'
                 msg['From'] = from_email
                 msg['To'] = to_email
-                msg.set_content('Daily Email: DoorSentry is currently using ' + str(sentryStorage / pow(10,9)) + \
-                                'GB of ' + str(maxSentryStorage / pow(10,3)) + 'GB available storage')
+                msg.set_content('Daily Email: DoorSentry is currently using ' + str(sentryStorage / pow(1024,3)) + \
+                                'GB of ' + str(maxSentryStorage / 1024) + 'GB available storage')
 
                 try:
                     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
@@ -226,8 +228,8 @@ while (cap.isOpened()):
         daily_session_size = daily_session_size + os.path.getsize(filename)
         sentryStorage = sentryStorage + os.path.getsize(filename)
         if fileNum % fileUploadNotificationFreq == 0:
-            print('Saving ' + str(filename) + ', Daily Session Size = ' + str(daily_session_size / pow(10, 6)) + \
-                  'MB, All Sessions Size = ' + str(sentryStorage / pow(10,6)) + 'MB, TO END: press \'q\' on VideoStream')
+            print('Saving ' + str(filename) + ', Daily Session Size = ' + str(daily_session_size / pow(1024,2)) + \
+                  'MB, All Sessions Size = ' + str(sentryStorage / pow(1024,2)) + 'MB, TO END: press \'q\' on VideoStream')
         time_lastCapture = time_now
     #Checks to see if the day the frame was taken matches the day the session began
     if currentDate.day - startDay != 0:
@@ -249,7 +251,7 @@ while (cap.isOpened()):
 
 
 
-    if maxSentryStorage < (sentryStorage / pow(10,6)):
+    if maxSentryStorage < (sentryStorage / pow(1024,2)):
         print("Sentry Storage has reached limit: now terminating program...")
         os.chdir('..')
         print("Clear disk space in " + os.getcwd())
