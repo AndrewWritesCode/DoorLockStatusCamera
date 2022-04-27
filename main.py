@@ -7,26 +7,42 @@ from email.message import EmailMessage
 import time
 import datetime
 
+import numpy as np
+
 debug = False
-
-
-cameraPort = 0
-cameraMode = ""
 
 with open(r'./environment.json', encoding="utf-8") as json_file:
     environment = json.load(json_file)
+cameraPort = int(environment["cameraPort"])
 to_email = environment["to_email"]
 from_email = environment["from_email"]
 from_email_pass = environment["from_email_pass"]
-sendEmails = environment["sendEmails"]
+sendEmailsStr = environment["sendEmails"]
+if sendEmailsStr.upper() == "true".upper(): #cannot cast from json to bool (Not sure why)
+    sendEmails = True
+else:
+    sendEmails = False
 startup = environment["mode"]
 tempMaxSentryStorage = float(environment["maxSentryStorage"])
 storageUnits = environment["storageUnits"].upper()
 fps = float(environment["fps"])
 fileUploadNotificationFreq = int(environment["notification_freq"])
+useRelativeMotionSensStr = environment["useRelativeMotionSensitivity"]
+motion_sensitivity = float(environment["motion_sensitivity"])
+relative_motion_sensitivity = float(environment["relative_motion_sensitivity"])
+if useRelativeMotionSensStr.upper() == "true".upper(): #cannot cast from json to bool (Not sure why)
+    useRelativeMotionSens = True
+else:
+    useRelativeMotionSens = False
+useMotionDetectionStr = environment["useMotionDetection"]
+if useMotionDetectionStr.upper() == "true".upper(): #cannot cast from json to bool (Not sure why)
+    useMotionDetection = True
+else:
+    useMotionDetection = False
+    motion_detected = True
 
-if fileUploadNotificationFreq < 1: #[int] Every 1/x file that is uploaded will be announce on terminal. 0 diables announcements
-    fileUploadNotificationFreq = pow(10,10)
+if fileUploadNotificationFreq < 1: #[int] Every 1/x file that is uploaded will be announce on terminal. 0 disables announcements
+    fileUploadNotificationFreq = pow(10,100)
 
 unitConv = 1
 if storageUnits == "GB":
@@ -56,6 +72,16 @@ if sendEmails:
         print("email credentials not accepted")
 
 
+def CollectionMode2Name(coll): #Replace this with match statement when updating to Python 3.10
+        if coll == "S":
+            return "Sentry"
+        elif coll == "T":
+            return  "Training"
+        elif coll == "L":
+            return "Locked"
+        else:
+            return "Unlocked"
+
 #Calculates the disk space taken from a given FPS value and file size
 def DailySpaceConsumption(singleFileSizeEstimate, fps):
     dailySpaceCons = singleFileSizeEstimate*86400*fps
@@ -71,8 +97,29 @@ def FPS_step(fps):
     fps_step = 1/fps #number of ms between frames
     return fps_step
 
+#Detects if there is motion between two frames
+def MotionDetect(prev_frame, next_frame, sensitivity, prevScoreArray):
+    motionDetected = False
+    diff = cv2.absdiff(next_frame, prev_frame)
+    g = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+    scoreArray = np.mean(g, axis=0)
+    for score in range(0,scoreArray.size):
+        #This scans each column, and detects motion if the avg gray value is greater than sensitivity (set in json)
+        if useRelativeMotionSens:
+            scoreDiff = abs(scoreArray[score] - prevScoreArray[score])
+            if scoreDiff > (1 + relative_motion_sensitivity)*prevScoreArray[score]:
+                pass
+        else:
+            if abs(scoreArray[score] - prevScoreArray[score]) > sensitivity:
+                #print("this frame: " + str(scoreArray[score])) #FOR DEBUG
+                #print("prev frame: " + str(prevScoreArray[score])) #FOR DEBUG
+                motionDetected = True
+        prevScoreArray[score] = scoreArray[score]
+    return prevScoreArray, motionDetected
+
 #Sets/Creates the directory
-def DirectorySetup(cameraMode):
+def DirectorySetup():
+    cameraMode = ""
     currentDate = datetime.datetime.now()
     dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
     collection_type = ""
@@ -116,8 +163,6 @@ def DirectorySetup(cameraMode):
             if collection_type == "L" or "U" or "S":
                 break
 
-
-
     try:
         os.mkdir('data')
     except:
@@ -156,9 +201,9 @@ def DirectorySetup(cameraMode):
 ######################################
 
 
-collection_type, folderNum, sentryStorage = DirectorySetup(cameraMode)
+collection_type, folderNum, sentryStorage = DirectorySetup()
 if collection_type == "S":
-    print(str(sentryStorage / pow(1024,2)) + "MB of images are already saved to Sentry Storage...")
+    print(str(round(sentryStorage / pow(1024,2),4)) + "MB of images are already saved to Sentry Storage...")
 print("Saving images to " + str(os.getcwd()))
 #The number of bytes that have been saved in the current session
 daily_session_size = 0
@@ -166,7 +211,7 @@ daily_session_size = 0
 for file in os.listdir(os.getcwd()):
     daily_session_size = daily_session_size + os.path.getsize(file)
     #This sums the file sizes in the current day's directory
-print("Session size intializing at " + str(daily_session_size / pow(1024, 2)) + "MB")
+print("Daily directory size initializing at " + str(round(daily_session_size / pow(1024, 2), 4)) + "MB")
 time_lastCapture = time.time()
 #initializes the time for fps calcs
 fps_step = FPS_step(fps)
@@ -180,9 +225,16 @@ except:
 print("Accessing Camera...")
 startDay = datetime.datetime.now().day #The day that recording starts
 sentDailyWarningEmail = False
+prev_ms = 0
+
+firstPass = True
 while (cap.isOpened()):
     #captures a frame each loop
     ret, frame = cap.read()
+    if firstPass:
+        prev_ms = np.zeros(frame.shape[1])
+        prev_frame = frame
+        firstPass = False
     if ret == True:
         #displays the current frame
         cv2.imshow('VideoStream', frame)
@@ -193,7 +245,15 @@ while (cap.isOpened()):
             break
     else:
         break
-
+    #Handles the motion sensing
+    if useMotionDetection:
+        motion_detected = False
+        try:
+            motion_scores, motion_detected = MotionDetect(prev_frame, frame, motion_sensitivity, prev_ms)
+            prev_ms = motion_scores
+        except:
+            print("Initializing Motion Sensing...")
+    prev_frame = frame
     #Handles file-naming/saving and fps
     time_now = time.time()
     currentDate = datetime.datetime.now() #The current date for the frame
@@ -219,18 +279,19 @@ while (cap.isOpened()):
                     pass
 
     if (time_now - time_lastCapture) > fps_step:
-        fileNum = len(os.listdir(os.getcwd()))
-        dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
-        timeString = str(currentDate.hour) + "h" + str(currentDate.minute) + "m" + str(currentDate.second) + "s"
-        filename = collection_type + '_ses' + str(folderNum) + '_num_' + str(fileNum) + '-' + str(fps) + 'FPS_' + \
-                   dateString + '-' + timeString +  '.jpeg'
-        cv2.imwrite(filename, frame)
-        daily_session_size = daily_session_size + os.path.getsize(filename)
-        sentryStorage = sentryStorage + os.path.getsize(filename)
-        if fileNum % fileUploadNotificationFreq == 0:
-            print('Saving ' + str(filename) + ', Daily Session Size = ' + str(daily_session_size / pow(1024,2)) + \
-                  'MB, All Sessions Size = ' + str(sentryStorage / pow(1024,2)) + 'MB, TO END: press \'q\' on VideoStream')
-        time_lastCapture = time_now
+        if motion_detected:
+            fileNum = len(os.listdir(os.getcwd()))
+            dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
+            timeString = str(currentDate.hour) + "h" + str(currentDate.minute) + "m" + str(currentDate.second) + "s"
+            filename = timeString + '-' + dateString + '-' + CollectionMode2Name(collection_type) + '_' + \
+                       'cameraNum' + str(cameraPort) + '_id' + str(fileNum) + '.jpeg'
+            cv2.imwrite(filename, frame)
+            daily_session_size = daily_session_size + os.path.getsize(filename)
+            sentryStorage = sentryStorage + os.path.getsize(filename)
+            if fileNum % fileUploadNotificationFreq == 0:
+                print('Saving ' + str(filename) + ', Daily Session Size = ' + str(daily_session_size / pow(1024,2)) + \
+                      'MB, All Sessions Size = ' + str(sentryStorage / pow(1024,2)) + 'MB, TO END: press \'q\' on VideoStream')
+            time_lastCapture = time_now
     #Checks to see if the day the frame was taken matches the day the session began
     if currentDate.day - startDay != 0:
         print("Day complete, saved " + str(daily_session_size) + "MB for day, moving to new directory...")

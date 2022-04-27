@@ -1,11 +1,17 @@
 {
-	"from_email": "your FROM (bot) email goes here",
-	"from_email_pass": "your FROM (bot) email password goes here (the app password, not login, see README",
-	"to_email": "your TO email goes here",
+	"cameraPort": "0",
 	"mode": "sentry",
 	"sendEmails": "false",
+	"from_email": "your FROM (bot) email goes here",
+	"from_email_pass": "your FROM (bot) email password goes here (the app password, not login, see README)",
+	"to_email": "your TO email goes here",
 	"maxSentryStorage": "10",
 	"storageUnits": "GB",
-	"fps": "1.5",
-	"notification_freq": "10"
+	"fps": "60",
+	"notification_freq": "10",
+	"useMotionDetection": "true",
+	"useRelativeMotionSensitivity": "false",
+	"motion_sensitivity": "5",
+	"relative_motion_sensitivity": "0.10"
+	
 }
