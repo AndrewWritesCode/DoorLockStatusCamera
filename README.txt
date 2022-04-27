@@ -9,7 +9,7 @@ BREAKDOWN OF .json FILE:
 	"mode": "sentry", # can be set to "sentry", "training", or "terminal". Sentry acts like a security camera, training allows for "locked" or "unlocked" to be in file name (to save time labelling training data). terminal mode allows you to set mode in temrinal
 	"sendEmails": "false", # [false/true] Determines whether emails should be sent using credentials at start of .json
 	"from_email": "your FROM (bot) email goes here",
-	"from_email_pass": "your FROM (bot) email password goes here (the app password, not login, see README)", # For gmaail go to your google acct seeting, then Security, and App passwords (select app [Custom], select device [Tested on Windows, should work on Mac])
+	"from_email_pass": "your FROM (bot) email password goes here (the app password, not login, see README)", # For gmail go to your google acct seeting, then Security, and App passwords (select app [Custom], select device [Tested on Windows, should work on Mac])
 	"to_email": "your TO email goes here",
 	"maxSentryStorage": "10", # The max amount of disk space allocaed for sentry images (excluding the training folders)
 	"storageUnits": "GB", # the untis of disk space allocated. Can be in MB or GB
