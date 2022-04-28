@@ -306,8 +306,8 @@ while (cap.isOpened()):
             fileNum = len(os.listdir(os.getcwd()))
             dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
             timeString = str(currentDate.hour) + "h" + str(currentDate.minute) + "m" + str(currentDate.second) + "s"
-            filename = timeString + '-' + dateString + '-' + CollectionMode2Name(collection_type) + '_' + \
-                       'cameraNum' + str(cameraPort) + '_id' + str(fileNum) + '.jpeg'
+            filename = 'id' + str(fileNum) + '_' + timeString + '-' + dateString + '-' + \
+                       CollectionMode2Name(collection_type) + '_' +'cameraNum' + str(cameraPort) + '.jpeg'
             cv2.imwrite(filename, frame)
             daily_session_size = daily_session_size + os.path.getsize(filename)
             sentryStorage = sentryStorage + os.path.getsize(filename)
