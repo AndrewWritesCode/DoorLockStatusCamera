@@ -110,24 +110,34 @@ def FPS_step(fps):
     return fps_step
 
 #Detects if there is motion between two frames
-def MotionDetect(prev_frame, next_frame, sensitivity, prevScoreArray):
+def MotionDetect(prev_frame, next_frame, sensitivity, prevScoreArrayCols, prevScoreArrayRows):
     motionDetected = False
     diff = cv2.absdiff(next_frame, prev_frame)
     g = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
-    scoreArray = np.mean(g, axis=0)
-    for score in range(0,scoreArray.size):
+    scoreArrayCols = np.mean(g, axis=0)
+    for ColScore in range(0,scoreArrayCols.size):
         #This scans each column, and detects motion if the avg gray value is greater than sensitivity (set in json)
         if useRelativeMotionSens:
-            scoreDiff = abs(scoreArray[score] - prevScoreArray[score])
-            if scoreDiff > (1 + relative_motion_sensitivity)*prevScoreArray[score]:
+            scoreDiff = abs(scoreArrayCols[ColScore] - prevScoreArrayCols[ColScore])
+            if scoreDiff > abs((relative_motion_sensitivity)*prevScoreArrayCols[ColScore]):
                 pass
         else:
-            if abs(scoreArray[score] - prevScoreArray[score]) > sensitivity:
-                #print("this frame: " + str(scoreArray[score])) #FOR DEBUG
-                #print("prev frame: " + str(prevScoreArray[score])) #FOR DEBUG
+            if abs(scoreArrayCols[ColScore] - prevScoreArrayCols[ColScore]) > sensitivity:
                 motionDetected = True
-        prevScoreArray[score] = scoreArray[score]
-    return prevScoreArray, motionDetected
+        prevScoreArrayCols[ColScore] = scoreArrayCols[ColScore]
+    if motion_detected == False:
+        scoreArrayRows = np.mean(g, axis=1)
+        for RowScore in range(0, scoreArrayRows.size):
+            # This scans each row, and detects motion if the avg gray value is greater than sensitivity (set in json)
+            if useRelativeMotionSens:
+                scoreDiff = abs(scoreArrayRows[RowScore] - prevScoreArrayRows[RowScore])
+                if scoreDiff > abs((relative_motion_sensitivity)*prevScoreArrayRows[RowScore]):
+                    pass
+            else:
+                if abs(scoreArrayRows[RowScore] - prevScoreArrayRows[RowScore]) > sensitivity:
+                    motionDetected = True
+            prevScoreArrayRows[RowScore] = scoreArrayRows[RowScore]
+    return prevScoreArrayCols, prevScoreArrayRows, motionDetected
 
 #Sets/Creates the directory
 def DirectorySetup():
@@ -237,7 +247,7 @@ except:
 print("Accessing Camera...")
 startDay = datetime.datetime.now().day #The day that recording starts
 sentDailyWarningEmail = False
-prev_ms = 0
+#prev_ms = 0
 
 firstPass = True
 safeShutdown = False
@@ -245,7 +255,8 @@ while (cap.isOpened()):
     #captures a frame each loop
     ret, frame = cap.read()
     if firstPass:
-        prev_ms = np.zeros(frame.shape[1])
+        prev_ms_cols = np.zeros(frame.shape[1])
+        prev_ms_rows = np.zeros(frame.shape[0])
         prev_frame = frame
         motion_detected_since_last_capture = True
         firstPass = False
@@ -279,8 +290,9 @@ while (cap.isOpened()):
     if useMotionDetection:
         motion_detected = False
         try:
-            motion_scores, motion_detected = MotionDetect(prev_frame, frame, motion_sensitivity, prev_ms)
-            prev_ms = motion_scores
+            motion_scores_cols, motion_scores_rows,  motion_detected = MotionDetect(prev_frame, frame, motion_sensitivity, prev_ms_cols, prev_ms_rows)
+            prev_ms_cols = motion_scores_cols
+            prev_ms_rows = motion_scores_rows
         except:
             print("Initializing Motion Sensing...")
     prev_frame = frame
@@ -331,7 +343,7 @@ while (cap.isOpened()):
             motion_detected_since_last_capture = False
     elif motion_detected:
         motion_detected_since_last_capture = True
-        #print("motion between captures...") #DEBUG
+        print("motion between captures...") #DEBUG
     #Checks to see if the day the frame was taken matches the day the session began
     if currentDate.day - startDay != 0:
         print("Day complete, saved " + str(daily_session_size) + "MB for day, moving to new directory...")
