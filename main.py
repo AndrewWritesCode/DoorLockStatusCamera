@@ -247,6 +247,7 @@ while (cap.isOpened()):
     if firstPass:
         prev_ms = np.zeros(frame.shape[1])
         prev_frame = frame
+        motion_detected_since_last_capture = True
         firstPass = False
         print("Camera Accessed...")
     if ret == True:
@@ -314,7 +315,7 @@ while (cap.isOpened()):
         forceCapture = False
 
     if (time_now - time_lastCapture) > fps_step:
-        if motion_detected or (forceCapture == True):
+        if motion_detected or (forceCapture == True) or motion_detected_since_last_capture:
             fileNum = len(os.listdir(os.getcwd()))
             dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
             timeString = str(currentDate.hour) + "h" + str(currentDate.minute) + "m" + str(currentDate.second) + "s"
@@ -327,6 +328,10 @@ while (cap.isOpened()):
                 print('Saving ' + str(filename) + ', Daily Session Size = ' + str(daily_session_size / pow(1024,2)) + \
                       'MB, All Sessions Size = ' + str(sentryStorage / pow(1024,2)) + 'MB, TO END: press \'q\' on VideoStream')
             time_lastCapture = time_now
+            motion_detected_since_last_capture = False
+    elif motion_detected:
+        motion_detected_since_last_capture = True
+        #print("motion between captures...") #DEBUG
     #Checks to see if the day the frame was taken matches the day the session began
     if currentDate.day - startDay != 0:
         print("Day complete, saved " + str(daily_session_size) + "MB for day, moving to new directory...")
