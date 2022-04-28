@@ -242,6 +242,19 @@ while (cap.isOpened()):
         if cv2.waitKey(25) & 0xFF == ord('q'):
             print("ENDING SESSION:")
             print(str(sentryStorage / pow(1024,3)) + "GB of " + str(maxSentryStorage / 1024) + "GB allotted storage used")
+            if sendEmails:
+                msg = EmailMessage()
+                msg['Subject'] = 'Ending Sentry Session'
+                msg['From'] = from_email
+                msg['To'] = to_email
+                msg.set_content('Sentry has been manually shutdown: now terminating program.')
+                try:
+                    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+                        smtp.login(from_email, from_email_pass)
+
+                        smtp.send_message(msg)
+                except:
+                    pass
             break
     else:
         break
