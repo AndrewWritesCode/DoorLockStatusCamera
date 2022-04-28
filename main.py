@@ -22,6 +22,11 @@ if sendEmailsStr.upper() == "true".upper(): #cannot cast from json to bool (Not 
     sendEmails = True
 else:
     sendEmails = False
+useVideoStreamViewerStr = environment["useVideoStreamViewer"]
+if useVideoStreamViewerStr.upper() == "true".upper(): #cannot cast from json to bool (Not sure why)
+    useVideoStreamViewer = True
+else:
+    useVideoStreamViewer = False
 startup = environment["mode"]
 tempMaxSentryStorage = float(environment["maxSentryStorage"])
 storageUnits = environment["storageUnits"].upper()
@@ -237,9 +242,11 @@ while (cap.isOpened()):
         prev_ms = np.zeros(frame.shape[1])
         prev_frame = frame
         firstPass = False
+        print("Camera Accessed...")
     if ret == True:
-        #displays the current frame
-        cv2.imshow('VideoStream', frame)
+        #displays the current frame (if enabled in environment.json)
+        if useVideoStreamViewer == True:
+            cv2.imshow('VideoStream', frame)
         #Press 'q' on keyboard to break loop and end program
         if cv2.waitKey(25) & 0xFF == ord('q'):
             safeShutdown = True
@@ -351,7 +358,7 @@ if firstPass:
     print("Unable to establish connection with camera...")
     print("Terminating program...")
 
-if (not safeShutdown) and (not firstPass):
+if (not safeShutdown) and (not firstPass) and useVideoStreamViewer:
     print("Unsafe shutdwon...")
     if sendEmails:
         msg = EmailMessage()
