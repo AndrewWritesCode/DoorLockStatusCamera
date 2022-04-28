@@ -9,6 +9,8 @@
 	"maxSentryStorage": "10",
 	"storageUnits": "GB",
 	"fps": "60",
+	"useForceCapture": "true",
+	"force_capture_interval_seconds": "30",
 	"notification_freq": "10",
 	"useMotionDetection": "true",
 	"useRelativeMotionSensitivity": "false",

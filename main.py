@@ -31,6 +31,12 @@ startup = environment["mode"]
 tempMaxSentryStorage = float(environment["maxSentryStorage"])
 storageUnits = environment["storageUnits"].upper()
 fps = float(environment["fps"])
+useForceCaptureStr = environment["useForceCapture"]
+if useForceCaptureStr.upper() == "true".upper(): #cannot cast from json to bool (Not sure why)
+    useForceCapture = True
+else:
+    useForceCapture = False
+forceCaptureIntervalSeconds = float(environment["force_capture_interval_seconds"])
 fileUploadNotificationFreq = int(environment["notification_freq"])
 useRelativeMotionSensStr = environment["useRelativeMotionSensitivity"]
 motion_sensitivity = float(environment["motion_sensitivity"])
@@ -301,8 +307,14 @@ while (cap.isOpened()):
                 except:
                     print("Failed to send email with subject: " + msg['Subject'])
 
+    if ((time_now - time_lastCapture) > forceCaptureIntervalSeconds) and (useForceCapture == True):
+        forceCapture = True
+        #print("Forcing Image Capture...") #FOR DEBUG
+    else:
+        forceCapture = False
+
     if (time_now - time_lastCapture) > fps_step:
-        if motion_detected:
+        if motion_detected or (forceCapture == True):
             fileNum = len(os.listdir(os.getcwd()))
             dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
             timeString = str(currentDate.hour) + "h" + str(currentDate.minute) + "m" + str(currentDate.second) + "s"

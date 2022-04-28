@@ -15,10 +15,12 @@ BREAKDOWN OF .json FILE:
 	"maxSentryStorage": "10", # The max amount of disk space allocaed for sentry images (excluding the training folders)
 	"storageUnits": "GB", # the untis of disk space allocated. Can be in MB or GB
 	"fps": "60", # The Frame/second that captures are taken in sentry mode (This value does not affect motion_sensing) You can use a float or int here (e.g 1.5 or 1)
+	"useForceCapture": "true", # Enables force capture (see next line for details)
+	"force_capture_interval_seconds": "300", # The max interval between two frames in seconds
 	"notification_freq": "10", # The save notifications will play 1/x, where x is the notificatiuon_freq value. A value of zero or below will result in no save notifications
 	"useMotionDetection": "true", #[false/true] determines if motion sensing is enabled or not. If disabled, an image will be captured every frame determined by "fps" setting
 	"useRelativeMotionSensitivity": "false", #[false/true] this mode checks if the previous pixel column values differ based on a percentage of the previous frames pixel column value. If this is false, then the frames are compared using a fixed offset
-	"motion_sensitivity": "5", # changes the offset of gray value need to trigger the motion sensing
+	"motion_sensitivity": "5", # changes the offset of gray value need to trigger the motion sensing (lower value is higher sensitvivity)
 	"relative_motion_sensitivity": "0.10" # changes the percentage used for "useRelativeMotionSensitivity"
 	
 }
