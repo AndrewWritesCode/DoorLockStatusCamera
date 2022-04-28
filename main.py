@@ -70,6 +70,7 @@ if sendEmails:
             smtp.send_message(msg)
     except:
         print("email credentials not accepted")
+        print("Failed to send email with subject: " + msg['Subject'])
 
 
 def CollectionMode2Name(coll): #Replace this with match statement when updating to Python 3.10
@@ -228,6 +229,7 @@ sentDailyWarningEmail = False
 prev_ms = 0
 
 firstPass = True
+safeShutdown = False
 while (cap.isOpened()):
     #captures a frame each loop
     ret, frame = cap.read()
@@ -240,6 +242,7 @@ while (cap.isOpened()):
         cv2.imshow('VideoStream', frame)
         #Press 'q' on keyboard to break loop and end program
         if cv2.waitKey(25) & 0xFF == ord('q'):
+            safeShutdown = True
             print("ENDING SESSION:")
             print(str(sentryStorage / pow(1024,3)) + "GB of " + str(maxSentryStorage / 1024) + "GB allotted storage used")
             if sendEmails:
@@ -254,7 +257,7 @@ while (cap.isOpened()):
 
                         smtp.send_message(msg)
                 except:
-                    pass
+                    print("Failed to send email with subject: " + msg['Subject'])
             break
     else:
         break
@@ -289,7 +292,7 @@ while (cap.isOpened()):
 
                         smtp.send_message(msg)
                 except:
-                    pass
+                    print("Failed to send email with subject: " + msg['Subject'])
 
     if (time_now - time_lastCapture) > fps_step:
         if motion_detected:
@@ -341,8 +344,28 @@ while (cap.isOpened()):
 
                     smtp.send_message(msg)
             except:
-                pass
+                print("Failed to send email with subject: " + msg['Subject'])
         break
+
+if firstPass:
+    print("Unable to establish connection with camera...")
+    print("Terminating program...")
+
+if (not safeShutdown) and (not firstPass):
+    print("Unsafe shutdwon...")
+    if sendEmails:
+        msg = EmailMessage()
+        msg['Subject'] = 'Door Sentry Unexpected Shutdown'
+        msg['From'] = from_email
+        msg['To'] = to_email
+        msg.set_content('Sentry has unexpected shutdown, check that camera is operating properly')
+        try:
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+                smtp.login(from_email, from_email_pass)
+
+                smtp.send_message(msg)
+        except:
+            print("Failed to send email with subject: " + msg['Subject'])
 #cv2 cleanup
 cap.release()
 cv2.destroyAllWindows()
