@@ -21,6 +21,7 @@ BREAKDOWN OF .json FILE:
 	"useMotionDetection": "true", #[false/true] determines if motion sensing is enabled or not. If disabled, an image will be captured every frame determined by "fps" setting
 	"useRelativeMotionSensitivity": "false", #[false/true] this mode checks if the previous pixel column values differ based on a percentage of the previous frames pixel column value. If this is false, then the frames are compared using a fixed offset
 	"motion_sensitivity": "5", # changes the offset of gray value need to trigger the motion sensing (lower value is higher sensitvivity)
-	"relative_motion_sensitivity": "0.10" # changes the percentage used for "useRelativeMotionSensitivity"
-	
+	"relative_motion_sensitivity": "0.10", # changes the percentage used for "useRelativeMotionSensitivity"
+	"motion_sensing_persistence": "5" # this is the number of seconds that captures are saved since motion was detected. Set to 0 to disable
+
 }

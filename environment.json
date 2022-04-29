@@ -15,6 +15,7 @@
 	"useMotionDetection": "true",
 	"useRelativeMotionSensitivity": "false",
 	"motion_sensitivity": "5",
-	"relative_motion_sensitivity": "0.10"
+	"relative_motion_sensitivity": "0.10",
+	"motion_sensing_persistence": "5"
 	
 }

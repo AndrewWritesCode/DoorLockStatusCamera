@@ -41,6 +41,7 @@ fileUploadNotificationFreq = int(environment["notification_freq"])
 useRelativeMotionSensStr = environment["useRelativeMotionSensitivity"]
 motion_sensitivity = float(environment["motion_sensitivity"])
 relative_motion_sensitivity = float(environment["relative_motion_sensitivity"])
+motion_sensing_persistence = float(environment["motion_sensing_persistence"])
 if useRelativeMotionSensStr.upper() == "true".upper(): #cannot cast from json to bool (Not sure why)
     useRelativeMotionSens = True
 else:
@@ -259,6 +260,7 @@ while (cap.isOpened()):
         prev_ms_rows = np.zeros(frame.shape[0])
         prev_frame = frame
         motion_detected_since_last_capture = True
+        timeSinceMotion = time.time()
         firstPass = False
         print("Camera Accessed...")
     if ret == True:
@@ -295,10 +297,25 @@ while (cap.isOpened()):
             prev_ms_rows = motion_scores_rows
         except:
             print("Initializing Motion Sensing...")
+
     prev_frame = frame
     #Handles file-naming/saving and fps
     time_now = time.time()
     currentDate = datetime.datetime.now() #The current date for the frame
+
+    if ((time_now - time_lastCapture) > forceCaptureIntervalSeconds) and (useForceCapture == True) :
+        forceCapture = True
+        #print("Forcing Image Capture...") #FOR DEBUG
+    else:
+        forceCapture = False
+
+    #Handles motion sensing persistence (how long captures last in seconds since last capture)
+    if motion_detected:
+        timeSinceMotion = time.time()
+    if (time_now - timeSinceMotion) < motion_sensing_persistence:
+        forceCapture = True
+        #print("Persistent Capture") #FOR DEBUG
+
     if warnSentryStorage < (sentryStorage / pow(1024, 2)):
         if not sentDailyWarningEmail:
             sentDailyWarningEmail = True
@@ -319,12 +336,6 @@ while (cap.isOpened()):
                         smtp.send_message(msg)
                 except:
                     print("Failed to send email with subject: " + msg['Subject'])
-
-    if ((time_now - time_lastCapture) > forceCaptureIntervalSeconds) and (useForceCapture == True):
-        forceCapture = True
-        #print("Forcing Image Capture...") #FOR DEBUG
-    else:
-        forceCapture = False
 
     if (time_now - time_lastCapture) > fps_step:
         if motion_detected or (forceCapture == True) or motion_detected_since_last_capture:
