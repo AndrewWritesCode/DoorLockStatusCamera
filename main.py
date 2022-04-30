@@ -125,6 +125,7 @@ def MotionDetect(prev_frame, next_frame, sensitivity, prevScoreArrayCols, prevSc
         else:
             if abs(scoreArrayCols[ColScore] - prevScoreArrayCols[ColScore]) > sensitivity:
                 motionDetected = True
+                break
         prevScoreArrayCols[ColScore] = scoreArrayCols[ColScore]
     if motion_detected == False:
         scoreArrayRows = np.mean(g, axis=1)
@@ -137,6 +138,7 @@ def MotionDetect(prev_frame, next_frame, sensitivity, prevScoreArrayCols, prevSc
             else:
                 if abs(scoreArrayRows[RowScore] - prevScoreArrayRows[RowScore]) > sensitivity:
                     motionDetected = True
+                    break
             prevScoreArrayRows[RowScore] = scoreArrayRows[RowScore]
     return prevScoreArrayCols, prevScoreArrayRows, motionDetected
 
