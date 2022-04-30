@@ -354,7 +354,7 @@ while (cap.isOpened()):
             motion_detected_since_last_capture = False
     elif motion_detected:
         motion_detected_since_last_capture = True
-        print("motion between captures...") #DEBUG
+        #print("motion between captures...") #DEBUG
     #Checks to see if the day the frame was taken matches the day the session began
     if currentDate.day - startDay != 0:
         print("Day complete, saved " + str(daily_session_size) + "MB for day, moving to new directory...")
