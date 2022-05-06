@@ -1,4 +1,6 @@
 {
+	"parentDirectory": "data",
+	"subDirectory": "securityCamera",
 	"cameraPort": "0",
 	"mode": "sentry",
 	"useVideoStreamViewer": "true",

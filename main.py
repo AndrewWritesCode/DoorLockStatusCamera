@@ -13,6 +13,8 @@ debug = False
 
 with open(r'./environment.json', encoding="utf-8") as json_file:
     environment = json.load(json_file)
+parentDirectory = environment["parentDirectory"]
+subDirectory = environment["subDirectory"]
 cameraPort = int(environment["cameraPort"])
 to_email = environment["to_email"]
 from_email = environment["from_email"]
@@ -152,7 +154,7 @@ def DirectorySetup():
     sentryStorage = 0.0
     if startup == "sentry":
         collection_type = "S"
-        collection_dir = 'doorSentry'
+        collection_dir = subDirectory
     elif startup == "training":
         while collection_type != "L" or "U":
             collection_type = input("TRAINING TYPE: LOCKED OR UNLOCKED? [L/U]: ")
@@ -171,7 +173,7 @@ def DirectorySetup():
             mode = mode.upper()
             if mode == "S":
                 collection_type = "S"
-                collection_dir = 'doorSentry'
+                collection_dir = subDirectory
                 break
             elif mode == "T" :
                 while collection_type != "L" or "U":
@@ -189,10 +191,10 @@ def DirectorySetup():
                 break
 
     try:
-        os.mkdir('data')
+        os.mkdir(parentDirectory)
     except:
         print("Using existing data directory...")
-    os.chdir('data')
+    os.chdir(parentDirectory)
 
     try:
         os.mkdir('archived_images')
@@ -328,7 +330,7 @@ while (cap.isOpened()):
                 msg['Subject'] = 'Door Sentry Running Out of Disk Space'
                 msg['From'] = from_email
                 msg['To'] = to_email
-                msg.set_content('Daily Email: DoorSentry is currently using ' + str(sentryStorage / pow(1024,3)) + \
+                msg.set_content('Daily Email:' + str(subDirectory) + 'is currently using ' + str(sentryStorage / pow(1024,3)) + \
                                 'GB of ' + str(maxSentryStorage / 1024) + 'GB available storage')
 
                 try:
@@ -361,6 +363,8 @@ while (cap.isOpened()):
     if currentDate.day - startDay != 0:
         print("Day complete, saved " + str(daily_session_size) + "MB for day, moving to new directory...")
         os.chdir('..')
+        print("Calculating to GB saved to " + str(subDirectory) + "folder...")
+        #Do print staement's code here
 
         try:
             dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
