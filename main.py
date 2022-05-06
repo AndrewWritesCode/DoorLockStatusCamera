@@ -226,6 +226,7 @@ def DirectorySetup():
     return collection_type, folderNum, sentryStorage, sentryStorageRoot
 
 def sentryStorageCalib(sentryStorageRoot):
+    sentryStorage = 0
     for path, dirs, files in os.walk(sentryStorageRoot):
         for file in files:
             filepath = os.path.join(path, file)
