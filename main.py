@@ -66,7 +66,7 @@ elif storageUnits == "MB":
 else:
     print("Error with storageUnits in environment.json, defaulting to MB")
 
-maxSentryStorage = tempMaxSentryStorage * unitConv #(onces this is reached oldest images will be deleted)
+maxSentryStorage = tempMaxSentryStorage * unitConv #(once this is reached oldest images will be deleted)
 warnSentryStorage = .7 * maxSentryStorage #[in MB] (once this limit is reached a daily email is sent)
 
 
@@ -206,6 +206,7 @@ def DirectorySetup():
     except:
         print("Using existing " + collection_dir + " directory...")
     os.chdir(collection_dir)
+    sentryStorageRoot = os.getcwd()
 
     try:
         folderNum = len(os.listdir(os.getcwd())) + 1
@@ -222,13 +223,19 @@ def DirectorySetup():
         print("Using existing dateString directory...")
     os.chdir(dateString)
 
-    return collection_type, folderNum, sentryStorage
+    return collection_type, folderNum, sentryStorage, sentryStorageRoot
 
+def sentryStorageCalib(sentryStorageRoot):
+    for path, dirs, files in os.walk(sentryStorageRoot):
+        for file in files:
+            filepath = os.path.join(path, file)
+            sentryStorage = sentryStorage + os.path.getsize(filepath)
+    return sentryStorage
 
 ######################################
 
 
-collection_type, folderNum, sentryStorage = DirectorySetup()
+collection_type, folderNum, sentryStorage, sentryStorageRoot = DirectorySetup()
 if collection_type == "S":
     print(str(round(sentryStorage / pow(1024,2),4)) + "MB of images are already saved to Sentry Storage...")
 print("Saving images to " + str(os.getcwd()))
@@ -321,25 +328,29 @@ while (cap.isOpened()):
         #print("Persistent Capture") #FOR DEBUG
 
     if warnSentryStorage < (sentryStorage / pow(1024, 2)):
-        if not sentDailyWarningEmail:
-            sentDailyWarningEmail = True
-            print("RUNNING OUT OF STORAGE SENDING WARNING EMAIL")
-            print(str(sentryStorage / pow(1024,3)) + 'GB/' + str(maxSentryStorage / 1024) + 'GB used')
-            if sendEmails:
-                msg = EmailMessage()
-                msg['Subject'] = 'Door Sentry Running Out of Disk Space'
-                msg['From'] = from_email
-                msg['To'] = to_email
-                msg.set_content('Daily Email:' + str(subDirectory) + 'is currently using ' + str(sentryStorage / pow(1024,3)) + \
-                                'GB of ' + str(maxSentryStorage / 1024) + 'GB available storage')
+        #Recalculate sentry storage before proceeding with warning
+        sentryStorage = sentryStorageCalib(sentryStorageRoot)
+        if warnSentryStorage < (sentryStorage / pow(1024, 2)):
+            if not sentDailyWarningEmail:
+                sentDailyWarningEmail = True
+                print("RUNNING OUT OF STORAGE SENDING WARNING EMAIL")
+                print(str(sentryStorage / pow(1024,3)) + 'GB/' + str(maxSentryStorage / 1024) + 'GB used')
+                if sendEmails:
+                    msg = EmailMessage()
+                    msg['Subject'] = 'Door Sentry Running Out of Disk Space'
+                    msg['From'] = from_email
+                    msg['To'] = to_email
+                    msg.set_content('30% DISK SPACE REMAINING:' + str(subDirectory) + 'is currently using ' \
+                                    + str(sentryStorage / pow(1024,3)) + 'GB of ' + str(maxSentryStorage / 1024) + \
+                                    'GB available storage in ' + str(sentryStorageRoot))
 
-                try:
-                    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-                        smtp.login(from_email, from_email_pass)
+                    try:
+                        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+                            smtp.login(from_email, from_email_pass)
 
-                        smtp.send_message(msg)
-                except:
-                    print("Failed to send email with subject: " + msg['Subject'])
+                            smtp.send_message(msg)
+                    except:
+                        print("Failed to send email with subject: " + msg['Subject'])
 
     if (time_now - time_lastCapture) > fps_step:
         if motion_detected or (forceCapture == True) or motion_detected_since_last_capture:
@@ -364,7 +375,9 @@ while (cap.isOpened()):
         print("Day complete, saved " + str(daily_session_size) + "MB for day, moving to new directory...")
         os.chdir('..')
         print("Calculating to GB saved to " + str(subDirectory) + "folder...")
-        #Do print staement's code here
+        #The following code recalibrates the sentryStorage size in case previous days' captures have been deleted
+        sentryStorage = sentryStorageCalib(sentryStorageRoot)
+        print(str(sentryStorage) / pow(1024,3) + "GB saved for all days")
 
         try:
             dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
@@ -382,23 +395,28 @@ while (cap.isOpened()):
 
 
     if maxSentryStorage < (sentryStorage / pow(1024,2)):
-        print("Sentry Storage has reached limit: now terminating program...")
-        os.chdir('..')
-        print("Clear disk space in " + os.getcwd())
-        if sendEmails:
-            msg = EmailMessage()
-            msg['Subject'] = 'Door Sentry Out of Disk Space'
-            msg['From'] = from_email
-            msg['To'] = to_email
-            msg.set_content('Sentry Storage has reached limit: now terminating program. Clear disk space in ' + os.getcwd())
-            try:
-                with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-                    smtp.login(from_email, from_email_pass)
+        #First recalibrate sentryStorage
+        sentryStorage = sentryStorageCalib(sentryStorageRoot)
+        #Now check again if past max storage
+        if maxSentryStorage < (sentryStorage / pow(1024, 2)):
+            print("Sentry Storage has reached limit: now terminating program...")
+            os.chdir('..')
+            print("Clear disk space in " + os.getcwd())
+            if sendEmails:
+                msg = EmailMessage()
+                msg['Subject'] = 'Door Sentry Out of Disk Space'
+                msg['From'] = from_email
+                msg['To'] = to_email
+                msg.set_content('Sentry Storage has reached limit: now terminating program. Clear disk space in ' + \
+                                str(sentryStorageRoot))
+                try:
+                    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+                        smtp.login(from_email, from_email_pass)
 
-                    smtp.send_message(msg)
-            except:
-                print("Failed to send email with subject: " + msg['Subject'])
-        break
+                        smtp.send_message(msg)
+                except:
+                    print("Failed to send email with subject: " + msg['Subject'])
+            break
 
 if firstPass:
     print("Unable to establish connection with camera...")
