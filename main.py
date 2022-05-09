@@ -40,14 +40,8 @@ else:
     useForceCapture = False
 forceCaptureIntervalSeconds = float(environment["force_capture_interval_seconds"])
 fileUploadNotificationFreq = int(environment["notification_freq"])
-useRelativeMotionSensStr = environment["useRelativeMotionSensitivity"]
 motion_sensitivity = float(environment["motion_sensitivity"])
-relative_motion_sensitivity = float(environment["relative_motion_sensitivity"])
 motion_sensing_persistence = float(environment["motion_sensing_persistence"])
-if useRelativeMotionSensStr.upper() == "true".upper(): #cannot cast from json to bool (Not sure why)
-    useRelativeMotionSens = True
-else:
-    useRelativeMotionSens = False
 useMotionDetectionStr = environment["useMotionDetection"]
 if useMotionDetectionStr.upper() == "true".upper(): #cannot cast from json to bool (Not sure why)
     useMotionDetection = True
@@ -113,36 +107,24 @@ def FPS_step(fps):
     return fps_step
 
 #Detects if there is motion between two frames
-def MotionDetect(prev_frame, next_frame, sensitivity, prevScoreArrayCols, prevScoreArrayRows):
+def MotionDetect(prev_frame, next_frame, sensitivity):
     motionDetected = False
     diff = cv2.absdiff(next_frame, prev_frame)
     g = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
     scoreArrayCols = np.mean(g, axis=0)
     for ColScore in range(0,scoreArrayCols.size):
         #This scans each column, and detects motion if the avg gray value is greater than sensitivity (set in json)
-        if useRelativeMotionSens:
-            scoreDiff = abs(scoreArrayCols[ColScore] - prevScoreArrayCols[ColScore])
-            if scoreDiff > abs((relative_motion_sensitivity)*prevScoreArrayCols[ColScore]):
-                pass
-        else:
-            if abs(scoreArrayCols[ColScore] - prevScoreArrayCols[ColScore]) > sensitivity:
-                motionDetected = True
-                break
-        prevScoreArrayCols[ColScore] = scoreArrayCols[ColScore]
-    if motion_detected == False:
-        scoreArrayRows = np.mean(g, axis=1)
-        for RowScore in range(0, scoreArrayRows.size):
-            # This scans each row, and detects motion if the avg gray value is greater than sensitivity (set in json)
-            if useRelativeMotionSens:
-                scoreDiff = abs(scoreArrayRows[RowScore] - prevScoreArrayRows[RowScore])
-                if scoreDiff > abs((relative_motion_sensitivity)*prevScoreArrayRows[RowScore]):
-                    pass
-            else:
-                if abs(scoreArrayRows[RowScore] - prevScoreArrayRows[RowScore]) > sensitivity:
-                    motionDetected = True
-                    break
-            prevScoreArrayRows[RowScore] = scoreArrayRows[RowScore]
-    return prevScoreArrayCols, prevScoreArrayRows, motionDetected
+        if abs(scoreArrayCols[ColScore]) > sensitivity:
+            motionDetected = True
+            break
+        #prevScoreArrayCols[ColScore] = scoreArrayCols[ColScore]
+    scoreArrayRows = np.mean(g, axis=1)
+    for RowScore in range(0, scoreArrayRows.size):
+        # This scans each row, and detects motion if the avg gray value is greater than sensitivity (set in json)
+        if abs(scoreArrayRows[RowScore]) > sensitivity:
+            motionDetected = True
+            break
+    return motionDetected
 
 #Sets/Creates the directory
 def DirectorySetup():
@@ -302,11 +284,8 @@ while (cap.isOpened()):
         break
     #Handles the motion sensing
     if useMotionDetection:
-        motion_detected = False
         try:
-            motion_scores_cols, motion_scores_rows,  motion_detected = MotionDetect(prev_frame, frame, motion_sensitivity, prev_ms_cols, prev_ms_rows)
-            prev_ms_cols = motion_scores_cols
-            prev_ms_rows = motion_scores_rows
+            motion_detected = MotionDetect(prev_frame, frame, motion_sensitivity)
         except:
             print("Initializing Motion Sensing...")
 
@@ -324,6 +303,7 @@ while (cap.isOpened()):
     #Handles motion sensing persistence (how long captures last in seconds since last capture)
     if motion_detected:
         timeSinceMotion = time.time()
+        forceCapture = True
     if (time_now - timeSinceMotion) < motion_sensing_persistence:
         forceCapture = True
         #print("Persistent Capture") #FOR DEBUG
@@ -353,13 +333,17 @@ while (cap.isOpened()):
                     except:
                         print("Failed to send email with subject: " + msg['Subject'])
 
-    if (time_now - time_lastCapture) > fps_step:
-        if motion_detected or (forceCapture == True) or motion_detected_since_last_capture:
+
+    if motion_detected_since_last_capture:
+        forceCapture = True
+    # Handles forcing the camera to save a capture/image
+    if forceCapture:
+        if (time_now - time_lastCapture) > fps_step:
             fileNum = len(os.listdir(os.getcwd()))
             dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
             timeString = str(currentDate.hour) + "h" + str(currentDate.minute) + "m" + str(currentDate.second) + "s"
             filename = 'id' + str(fileNum) + '_' + timeString + '-' + dateString + '-' + \
-                       CollectionMode2Name(collection_type) + '_' +'cameraNum' + str(cameraPort) + '.jpeg'
+                        CollectionMode2Name(collection_type) + '_' +'cameraNum' + str(cameraPort) + '.jpeg'
             cv2.imwrite(filename, frame)
             daily_session_size = daily_session_size + os.path.getsize(filename)
             sentryStorage = sentryStorage + os.path.getsize(filename)
@@ -367,6 +351,7 @@ while (cap.isOpened()):
                 print('Saving ' + str(filename) + ', Daily Session Size = ' + str(daily_session_size / pow(1024,2)) + \
                       'MB, All Sessions Size = ' + str(sentryStorage / pow(1024,2)) + 'MB, TO END: press \'q\' on VideoStream')
             time_lastCapture = time_now
+            motion_detected = False
             motion_detected_since_last_capture = False
     elif motion_detected:
         motion_detected_since_last_capture = True

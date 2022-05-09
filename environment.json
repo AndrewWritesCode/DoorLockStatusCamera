@@ -12,12 +12,10 @@
 	"storageUnits": "GB",
 	"fps": "60",
 	"useForceCapture": "true",
-	"force_capture_interval_seconds": "30",
+	"force_capture_interval_seconds": "300",
 	"notification_freq": "10",
 	"useMotionDetection": "true",
-	"useRelativeMotionSensitivity": "false",
-	"motion_sensitivity": "5",
-	"relative_motion_sensitivity": "0.10",
+	"motion_sensitivity": "9",
 	"motion_sensing_persistence": "5"
 	
 }
