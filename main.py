@@ -364,7 +364,7 @@ while (cap.isOpened()):
         print("Calculating to GB saved to " + str(subDirectory) + "folder...")
         #The following code recalibrates the sentryStorage size in case previous days' captures have been deleted
         sentryStorage = sentryStorageCalib(sentryStorageRoot)
-        print(str(sentryStorage) / pow(1024,3) + "GB saved for all days")
+        print(str(sentryStorage / pow(1024,3)) + "GB saved for all days")
 
         try:
             dateString = str(currentDate.month) + 'm' + str(currentDate.day) + 'd' + str(currentDate.year) + 'y'
