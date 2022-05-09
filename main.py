@@ -118,12 +118,13 @@ def MotionDetect(prev_frame, next_frame, sensitivity):
             motionDetected = True
             break
         #prevScoreArrayCols[ColScore] = scoreArrayCols[ColScore]
-    scoreArrayRows = np.mean(g, axis=1)
-    for RowScore in range(0, scoreArrayRows.size):
-        # This scans each row, and detects motion if the avg gray value is greater than sensitivity (set in json)
-        if abs(scoreArrayRows[RowScore]) > sensitivity:
-            motionDetected = True
-            break
+    if motionDetected == False:
+        scoreArrayRows = np.mean(g, axis=1)
+        for RowScore in range(0, scoreArrayRows.size):
+            # This scans each row, and detects motion if the avg gray value is greater than sensitivity (set in json)
+            if abs(scoreArrayRows[RowScore]) > sensitivity:
+                motionDetected = True
+                break
     return motionDetected
 
 #Sets/Creates the directory
