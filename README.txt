@@ -2,6 +2,8 @@ Add your email to the environment.json file to receive daily warning emails when
 
 To exit the application, click on the video window, and press 'q'
 
+You can also run the script in a cloud directory (such as a desktop dropbox folder) to remotely view recent frames. Be sure to turn down the frame rate if you do this however, because rapidly creating files can create issues with the syncing of your desktop cloud folder in my experience (most likely due to files being created faster than they can be uploaded).
+
 
 BREAKDOWN OF .json FILE:
 {
