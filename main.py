@@ -1,5 +1,4 @@
 import sys
-
 import cv2
 import os
 import json
@@ -160,8 +159,6 @@ def sentry_storage_calibration(sentry_storage_root):
     return sentry_storage
 
 
-######################################
-
 if send_emails:
     print("Sending initialization email...")
     msg = EmailMessage()
@@ -207,7 +204,7 @@ sent_daily_warning_email = False
 
 first_pass = True
 safe_shutdown = False
-while (cap.isOpened()):
+while cap.isOpened():
     # captures a frame each loop
     ret, frame = cap.read()
     if first_pass:
@@ -218,7 +215,7 @@ while (cap.isOpened()):
         time_since_motion = time.time()
         first_pass = False
         print('Camera Accessed...')
-    if ret == True:
+    if ret:
         # displays the current frame (if enabled in environment.json)
         if use_live_video_viewer == True:
             cv2.imshow('VideoStream', frame)
@@ -247,7 +244,7 @@ while (cap.isOpened()):
     if use_motion_detection:
         try:
             motion_detected = motion_detect(prev_frame, frame, motion_sensitivity)
-        except:
+        except RecursionError:
             print("Initializing Motion Sensing...")
 
     prev_frame = frame
@@ -355,7 +352,6 @@ while (cap.isOpened()):
                 try:
                     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
                         smtp.login(from_email, from_email_pass)
-
                         smtp.send_message(msg)
                 except Warning:
                     print("Failed to send email with subject: " + msg['Subject'])
