@@ -45,7 +45,7 @@ while cap.isOpened():
     if ret:
         # displays the current frame (if enabled in environment.json)
         if conf.use_live_video_viewer:
-            cv2.imshow(f'VideoStream Camera:{conf.camera_port}', frame)
+            cv2.imshow(f'VideoStream Camera: {conf.camera_port}', frame)
 
         # Press 'q' on keyboard to break loop and end program
         if cv2.waitKey(25) & 0xFF == ord('q'):  # TODO: add exit option without video window
