@@ -3,5 +3,7 @@
 /workspace.xml
 /.idea/
 /.vscode/
+/captures/
+/__pycache__/
 .gitattributes
 environment.json

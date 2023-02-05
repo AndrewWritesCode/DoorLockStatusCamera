@@ -1,22 +1,12 @@
 {
-	"root_directory": "",
-	"data_directory": "data",
-	"camera_directory": "securityCamera",
 	"camera_port": "0",
-	"mode": "sentry",
 	"use_live_video_viewer": true,
 	"send_emails": false,
 	"from_email": "your FROM (bot) email goes here",
 	"from_email_pass": "your FROM (bot) email password goes here (the app password, not login, see README)",
 	"to_email": "your TO email goes here",
-	"max_sentry_storage": "10",
+	"max_capture_storage": "10",
 	"storage_units": "GB",
-	"fps": "60",
-	"use_force_capture": true,
-	"force_capture_interval_seconds": "300",
-	"notification_freq": "10",
-	"use_motion_detection": true,
-	"motion_sensitivity": "9",
-	"motion_sensing_persistence": "5"
-	
+	"fps": "1",
+	"notification_freq": "100"
 }
